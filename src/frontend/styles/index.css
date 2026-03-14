@@ -1,0 +1,178 @@
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-bg: #caf0f8;
+    --color-border: #90e0ef;
+    --color-primary: #023e8a;
+    --color-primary-active: #03045e;
+    --color-secondary: #00b4d8;
+    --color-secondary-active: #0096c7;
+    --color-text: #0b223b;
+    --color-muted: #24557d;
+    --color-surface: #e8fbff;
+    --color-surface-alt: #e8fbff;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--color-text);
+    background: var(--color-bg);
+    font-family: "Inter", "Segoe UI", sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Hanken Grotesk", "Inter", sans-serif;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@theme {
+  --color-app: #caf0f8;
+}
+
+@layer components {
+  .app-shell {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .panel-solid {
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    background: var(--color-surface);
+  }
+
+  .panel-dashed {
+    border: 1px dashed var(--color-border);
+    border-radius: 0;
+    background: var(--color-surface-alt);
+  }
+
+  .eyebrow-tag {
+    border: 1px solid var(--color-border);
+    background: #fff;
+    color: var(--color-primary);
+    border-radius: 0;
+  }
+
+  .muted-copy {
+    color: var(--color-muted);
+  }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    font-family: "Hanken Grotesk", "Inter", sans-serif;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .btn-md {
+    padding: 0.625rem 0.95rem;
+    font-size: 0.9rem;
+  }
+
+  .btn-lg {
+    padding: 0.75rem 1.15rem;
+    font-size: 0.95rem;
+  }
+
+  .btn-primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+  }
+
+  .btn-primary:hover,
+  .btn-primary:focus-visible,
+  .btn-primary:active {
+    background: var(--color-primary-active);
+    border-color: var(--color-primary-active);
+  }
+
+  .btn-secondary {
+    background: var(--color-secondary);
+    border-color: var(--color-secondary);
+    color: #03294a;
+  }
+
+  .btn-secondary:hover,
+  .btn-secondary:focus-visible,
+  .btn-secondary:active {
+    background: var(--color-secondary-active);
+    border-color: var(--color-secondary-active);
+    color: #fff;
+  }
+
+  .btn-outline {
+    background: #fff;
+    border-color: var(--color-border);
+    color: var(--color-primary);
+  }
+
+  .btn-outline:hover,
+  .btn-outline:focus-visible,
+  .btn-outline:active {
+    background: #eafafe;
+  }
+
+  .field-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .field-label {
+    font-family: "Hanken Grotesk", "Inter", sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--color-primary);
+    text-transform: uppercase;
+  }
+
+  .field-input {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    padding: 0.6rem 0.7rem;
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .field-input:focus {
+    border-color: var(--color-primary);
+  }
+
+  .field-hint {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+}
