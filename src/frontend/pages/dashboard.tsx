@@ -236,7 +236,7 @@ export default function DashboardPage() {
 
       <section className="mt-[40px]">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-ui-0 text-xl font-semibold">Recent Files</h2>
+          <h2 className="text-ui-0 text-xl font-semibold">Uploaded Files</h2>
           <div className="w-full max-w-sm">
             <Input placeholder="Search" />
           </div>

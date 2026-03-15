@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import "@/frontend/styles/index.css";
 import AppLayout from "@/frontend/layouts/app-layout";
 import DashboardPage from "@/frontend/pages/dashboard";
+import DashboardFilesPage from "@/frontend/pages/dashboard-files";
 import LoginPage from "@/frontend/pages/login";
 import NotFoundPage from "@/frontend/pages/not-found";
 import SettingsPage from "@/frontend/pages/settings";
@@ -14,6 +15,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "dashboard/files", element: <DashboardFilesPage /> },
+      { path: "dashboard/files/:folderId", element: <DashboardFilesPage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],

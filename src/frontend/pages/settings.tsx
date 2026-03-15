@@ -4,12 +4,12 @@ import Input from "@/frontend/components/ui/input";
 export default function SettingsPage() {
   return (
     <div className="space-y-4">
-      <section className="panel-solid p-5 md:p-6">
+      <section className="mt-[20px] mb-[60px]">
         <h1 className="text-ui-0 text-2xl font-semibold">Settings</h1>
         <p className="text-ui-3 mt-1 text-sm">Update your workspace profile, notifications, and account preferences.</p>
       </section>
 
-      <section className="panel-solid grid gap-4 p-5 md:grid-cols-2 md:p-6">
+      <section className=" grid gap-4  md:grid-cols-2">
         <Input label="Workspace Name" defaultValue="uploady.app" />
         <Input label="Support Email" defaultValue="support@uploady.app" />
       </section>

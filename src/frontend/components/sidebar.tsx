@@ -6,6 +6,7 @@ type SidebarProps = {
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/dashboard/files", label: "Files" },
   { to: "/subscription", label: "Subscription" },
   { to: "/settings", label: "Settings" },
 ] as const;
@@ -24,6 +25,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.to === "/dashboard"}
             onClick={onNavigate}
             className={({ isActive }) =>
               [

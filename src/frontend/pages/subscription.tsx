@@ -3,7 +3,7 @@ import Button from "@/frontend/components/ui/button";
 export default function SubscriptionPage() {
   return (
     <div className="space-y-4">
-      <section className="panel-solid p-5 md:p-6">
+      <section className="mt-[20px] mb-[60px]">
         <h1 className="text-ui-0 text-2xl font-semibold">Subscription</h1>
         <p className="text-ui-3 mt-1 text-sm">
           Manage your plan, billing cycle, and usage limits for uploady.app.

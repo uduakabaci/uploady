@@ -12,7 +12,7 @@ export const uiButtonVariantClassMap = {
   primary:
     "bg-ui-2 text-ui-5 hover:bg-ui-4 hover:text-ui-6",
   secondary:
-    "",
+    "border-ui-6 bg-ui-7 text-ui-2 hover:bg-ui-6",
   outline: "",
 } as const;
 
