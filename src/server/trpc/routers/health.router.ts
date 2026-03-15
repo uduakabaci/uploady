@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { APP_NAME } from "../../../shared/constants";
-import { publicProcedure, router } from "../trpc";
+import { publicProcedure, router } from "@/server/trpc/trpc";
+import { APP_NAME } from "@/shared/constants";
 
 const healthInputSchema = z
   .object({

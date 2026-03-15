@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { COOKIE_NAMES } from "../../../shared/constants";
-import { environment } from "../../../shared/environment";
-import { createSetCookie, parseCookieHeader } from "../../lib/cookie";
-import { AuthService } from "../../services/auth.service";
-import { protectedProcedure, publicProcedure, router } from "../trpc";
+import { createSetCookie, parseCookieHeader } from "@/server/lib/cookie";
+import { AuthService } from "@/server/services/auth.service";
+import { protectedProcedure, publicProcedure, router } from "@/server/trpc/trpc";
+import { COOKIE_NAMES } from "@/shared/constants";
+import { environment } from "@/shared/environment";
 
 const requestMagicLinkInputSchema = z
   .object({

@@ -1,4 +1,4 @@
-import type { ObjectStorageConfig } from "../../shared/types";
+import type { ObjectStorageConfig } from "@/shared/types";
 
 export class StorageService {
   constructor(private readonly config: ObjectStorageConfig) {}

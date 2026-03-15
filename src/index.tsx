@@ -1,8 +1,8 @@
 import { serve } from "bun";
-import frontendIndex from "./frontend/index.html";
-import { createServer } from "./server/app";
-import { APP_NAME } from "./shared/constants";
-import { environment } from "./shared/environment";
+import frontendIndex from "@/frontend/index.html";
+import { createServer } from "@/server/app";
+import { APP_NAME } from "@/shared/constants";
+import { environment } from "@/shared/environment";
 
 const { routes } = createServer();
 

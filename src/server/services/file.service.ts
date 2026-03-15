@@ -1,4 +1,4 @@
-import type { StoredFile } from "../../shared/types";
+import type { StoredFile } from "@/shared/types";
 
 export class FileService {
   async listByOwner(_ownerId: string): Promise<StoredFile[]> {

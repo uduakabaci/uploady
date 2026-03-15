@@ -1,5 +1,5 @@
 import { index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import { TimeUtils } from "../lib/time";
+import { TimeUtils } from "@/server/lib/time";
 
 export const users = pgTable(
   "users",

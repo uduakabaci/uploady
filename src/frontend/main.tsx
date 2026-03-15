@@ -1,8 +1,8 @@
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
-import Layout from "./layouts/layout";
-import { router } from "./routes";
-import TRPCProvider from "./trpc/provider";
+import Layout from "@/frontend/layouts/layout";
+import { router } from "@/frontend/routes";
+import TRPCProvider from "@/frontend/trpc/provider";
 
 function start() {
   const rootElement = document.getElementById("root");

@@ -1,7 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import type { RouteMap } from "./types/route-map";
-import { createTRPCContext } from "./trpc/context";
-import { appRouter } from "./trpc/router";
+import type { RouteMap } from "@/server/types/route-map";
+import { createTRPCContext } from "@/server/trpc/context";
+import { appRouter } from "@/server/trpc/router";
 
 export function createServerRoutes(): RouteMap {
   return {

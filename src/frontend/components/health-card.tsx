@@ -1,6 +1,6 @@
 import type { TRPCClientErrorLike } from "@trpc/client";
-import type { AppRouter } from "../../server/trpc/router";
-import type { HealthPayload } from "../../shared/types";
+import type { AppRouter } from "@/server/trpc/router";
+import type { HealthPayload } from "@/shared/types";
 
 type HealthCardProps = {
   result: HealthPayload | undefined;

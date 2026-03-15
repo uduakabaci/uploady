@@ -1,12 +1,12 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { ID_PREFIXES } from "../../shared/constants";
-import type { AuthSession, AuthUser } from "../../shared/types";
-import { environment } from "../../shared/environment";
-import { CryptoUtils } from "../lib/crypto";
-import { IdUtils } from "../lib/id";
-import { db } from "../db";
-import { magicLinks, sessions, users } from "../db/schema";
-import { signAccessToken } from "../auth/token";
+import { signAccessToken } from "@/server/auth/token";
+import { db } from "@/server/db";
+import { magicLinks, sessions, users } from "@/server/db/schema";
+import { CryptoUtils } from "@/server/lib/crypto";
+import { IdUtils } from "@/server/lib/id";
+import { ID_PREFIXES } from "@/shared/constants";
+import { environment } from "@/shared/environment";
+import type { AuthSession, AuthUser } from "@/shared/types";
 
 type AuthTokenPair = {
   accessToken: string;

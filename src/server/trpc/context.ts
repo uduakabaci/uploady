@@ -1,7 +1,7 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
-import type { AuthSession, AuthUser } from "../../shared/types";
-import { AuthService } from "../services/auth.service";
-import { extractBearerToken, verifyAccessToken } from "../auth/token";
+import { extractBearerToken, verifyAccessToken } from "@/server/auth/token";
+import { AuthService } from "@/server/services/auth.service";
+import type { AuthSession, AuthUser } from "@/shared/types";
 
 type Context = {
   req: Request;

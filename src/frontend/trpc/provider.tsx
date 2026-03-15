@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { trpc } from "./client";
+import { trpc } from "@/frontend/trpc/client";
 
 const AUTH_TOKEN_STORAGE_KEY = "uploady-app.authToken";
 

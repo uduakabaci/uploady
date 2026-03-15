@@ -1,5 +1,5 @@
 import { jwtVerify, SignJWT } from "jose";
-import { environment } from "../../shared/environment";
+import { environment } from "@/shared/environment";
 
 const encoder = new TextEncoder();
 
