@@ -56,6 +56,16 @@
   --color-surface-muted: #e9ecef;
   --color-text-subtle: #6c757d;
   --color-text-strong: #212529;
+
+  --color-red-0: #d6d2d2;
+  --color-red-1: #f2e3e3;
+  --color-red-2: #f4bcbc;
+  --color-red-3: #f48484;
+  --color-red-4: #ff5e5e;
+
+  --color-danger-soft: #f2e3e3;
+  --color-danger: #f48484;
+  --color-danger-strong: #ff5e5e;
 }
 
 @layer components {

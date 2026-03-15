@@ -17,9 +17,9 @@ export default function HealthCard({ result, error, isLoading }: HealthCardProps
       {isLoading ? <p className="muted-copy mt-4 text-sm">Checking API health...</p> : null}
 
       {error ? (
-        <div className="mt-4 border border-[#e49aaa] bg-[#ffe8ee] px-3 py-2 text-sm text-[#7d1a34]">
+        <div className="mt-4 border border-red-2 bg-red-1 px-3 py-2 text-sm text-red-4">
           <p className="font-medium">{error.message}</p>
-          <p className="mt-1 text-xs text-[#9f3152]">{error.data?.code ?? "TRPC_ERROR"}</p>
+          <p className="mt-1 text-xs text-red-3">{error.data?.code ?? "TRPC_ERROR"}</p>
         </div>
       ) : null}
 
