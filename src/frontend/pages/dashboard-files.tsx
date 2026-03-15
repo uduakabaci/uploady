@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { FolderClosedIcon } from "@/frontend/components/icons/folder-icons";
-import Checkbox from "@/frontend/components/ui/checkbox";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
+import FilesTable from "@/frontend/components/files/files-table";
+import { CautionIcon, TrashIcon } from "@/frontend/components/icons/status-icons";
+import ItemDetailsDrawer from "@/frontend/components/files/item-details-drawer";
+import type { ShareEntry, UploadRow } from "@/frontend/components/files/types";
+import Button from "@/frontend/components/ui/button";
+import ConfirmModal from "@/frontend/components/ui/confirm-modal";
 import Input from "@/frontend/components/ui/input";
 
 const ROOT_FOLDER_ID = "root";
@@ -26,28 +30,6 @@ type FileRow = {
   uploadedBy: string;
 };
 
-type UploadRow =
-  | {
-      id: string;
-      kind: "folder";
-      name: string;
-      parentId: string | null;
-      dateUploaded: string;
-      lastUpdated: string;
-      size: string;
-      uploadedBy: string;
-      itemCount: number;
-    }
-  | {
-      id: string;
-      kind: "file";
-      name: string;
-      parentId: string;
-      dateUploaded: string;
-      lastUpdated: string;
-      size: string;
-      uploadedBy: string;
-    };
 
 const recentFolders: FolderRow[] = [
   {
@@ -190,19 +172,81 @@ const recentFiles: FileRow[] = [
   },
 ];
 
+const sharedWithByItemId: Record<string, ShareEntry[]> = {
+  "folder-brand-assets": [
+    { name: "Jordan Lee", email: "jordan.lee@uploady.app", access: "Editor" },
+    { name: "Mina Park", email: "mina.park@uploady.app", access: "Viewer" },
+  ],
+  "folder-campaigns": [{ name: "Sophie Reynolds", email: "sophie@uploady.app", access: "Editor" }],
+  "folder-legal": [{ name: "Legal Team", email: "legal@uploady.app", access: "Viewer" }],
+  "file-002": [{ name: "David Brown", email: "david@uploady.app", access: "Editor" }],
+  "file-007": [
+    { name: "Growth Team", email: "growth@uploady.app", access: "Viewer" },
+    { name: "Sophie Reynolds", email: "sophie@uploady.app", access: "Editor" },
+  ],
+};
+
+function parseSizeToBytes(size: string): number {
+  const match = size.trim().match(/^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)$/i);
+  if (!match) return 0;
+
+  const value = Number(match[1]);
+  const unit = match[2].toUpperCase();
+  const unitFactorMap: Record<string, number> = {
+    B: 1,
+    KB: 1024,
+    MB: 1024 ** 2,
+    GB: 1024 ** 3,
+    TB: 1024 ** 4,
+  };
+
+  return Math.round(value * (unitFactorMap[unit] ?? 1));
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unitIndex = -1;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
 export default function DashboardFilesPage() {
   const navigate = useNavigate();
   const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentFolderId = params.folderId ?? ROOT_FOLDER_ID;
 
+  const [foldersState, setFoldersState] = useState<FolderRow[]>(recentFolders);
+  const [filesState, setFilesState] = useState<FileRow[]>(recentFiles);
   const [searchValue, setSearchValue] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [openMenuRowId, setOpenMenuRowId] = useState<string | null>(null);
-  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<{
+    row: UploadRow;
+    x: number;
+    y: number;
+  } | null>(null);
 
-  const folderById = useMemo(() => {
-    return new Map(recentFolders.map(folder => [folder.id, folder]));
-  }, []);
+  const folderById = useMemo(() => new Map(foldersState.map(folder => [folder.id, folder])), [foldersState]);
+  const fileById = useMemo(() => new Map(filesState.map(file => [file.id, file])), [filesState]);
+
+  const folderIdsByParent = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const folder of foldersState) {
+      const parentKey = folder.parentId ?? ROOT_FOLDER_ID;
+      const existing = map.get(parentKey) ?? [];
+      existing.push(folder.id);
+      map.set(parentKey, existing);
+    }
+    return map;
+  }, [foldersState]);
 
   useEffect(() => {
     if (currentFolderId === ROOT_FOLDER_ID) return;
@@ -212,32 +256,24 @@ export default function DashboardFilesPage() {
 
   useEffect(() => {
     setSelectedIds(new Set());
-    setOpenMenuRowId(null);
+    setOpenMenu(null);
   }, [currentFolderId, searchValue]);
 
   useEffect(() => {
-    if (!openMenuRowId) return;
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuContainerRef.current) return;
-      if (menuContainerRef.current.contains(event.target as Node)) return;
-      setOpenMenuRowId(null);
-    };
+    if (!openMenu) return;
 
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpenMenuRowId(null);
+        setOpenMenu(null);
       }
     };
 
-    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onEscape);
 
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
-  }, [openMenuRowId]);
+  }, [openMenu]);
 
   const breadcrumbs = useMemo(() => {
     const trail: { id: string; label: string }[] = [{ id: ROOT_FOLDER_ID, label: "Files" }];
@@ -260,7 +296,7 @@ export default function DashboardFilesPage() {
   }, [currentFolderId, folderById]);
 
   const rows = useMemo<UploadRow[]>(() => {
-    const folderRows: UploadRow[] = recentFolders
+    const folderRows: UploadRow[] = foldersState
       .filter(folder => folder.parentId === currentFolderId)
       .map(folder => ({
         id: folder.id,
@@ -274,7 +310,7 @@ export default function DashboardFilesPage() {
         itemCount: folder.itemCount,
       }));
 
-    const fileRows: UploadRow[] = recentFiles
+    const fileRows: UploadRow[] = filesState
       .filter(file => file.parentId === currentFolderId)
       .map(file => ({
         id: file.id,
@@ -295,12 +331,107 @@ export default function DashboardFilesPage() {
         }
         return a.name.localeCompare(b.name);
       });
-  }, [currentFolderId, searchValue]);
+  }, [currentFolderId, searchValue, foldersState, filesState]);
 
   const visibleRowIds = useMemo(() => rows.map(row => row.id), [rows]);
   const selectedVisibleCount = visibleRowIds.filter(id => selectedIds.has(id)).length;
   const allVisibleSelected = visibleRowIds.length > 0 && selectedVisibleCount === visibleRowIds.length;
   const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
+
+  const allFolderDescendantsById = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    for (const folder of foldersState) {
+      const descendants: string[] = [];
+      const stack = [...(folderIdsByParent.get(folder.id) ?? [])];
+
+      while (stack.length > 0) {
+        const currentId = stack.pop();
+        if (!currentId) continue;
+        descendants.push(currentId);
+        const childFolderIds = folderIdsByParent.get(currentId) ?? [];
+        for (const childId of childFolderIds) {
+          stack.push(childId);
+        }
+      }
+
+      map.set(folder.id, descendants);
+    }
+
+    return map;
+  }, [folderIdsByParent, foldersState]);
+
+  const fileBytesById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const file of filesState) {
+      map.set(file.id, parseSizeToBytes(file.size));
+    }
+    return map;
+  }, [filesState]);
+
+  const detailSelection = useMemo(() => {
+    const itemType = searchParams.get("itemType");
+    const itemId = searchParams.get("itemId");
+    if (!itemType || !itemId) return null;
+
+    if (itemType === "folder") {
+      const folder = folderById.get(itemId);
+      if (!folder) return null;
+
+      const directFilesCount = filesState.filter(file => file.parentId === folder.id).length;
+      const directSubfoldersCount = foldersState.filter(candidate => candidate.parentId === folder.id).length;
+      const descendantFolderIds = allFolderDescendantsById.get(folder.id) ?? [];
+      const effectiveFolderIds = new Set([folder.id, ...descendantFolderIds]);
+      const totalBytes = filesState
+        .filter(file => effectiveFolderIds.has(file.parentId))
+        .reduce((sum, file) => sum + (fileBytesById.get(file.id) ?? 0), 0);
+
+      return {
+        kind: "folder" as const,
+        id: folder.id,
+        name: folder.folderName,
+        uploadedBy: folder.uploadedBy,
+        dateUploaded: folder.dateUploaded,
+        lastUpdated: folder.lastUpdated,
+        size: formatBytes(totalBytes),
+        filesInside: directFilesCount,
+        subfoldersInside: directSubfoldersCount,
+        sharedWith: sharedWithByItemId[folder.id] ?? [],
+      };
+    }
+
+    if (itemType === "file") {
+      const file = fileById.get(itemId);
+      if (!file) return null;
+
+      return {
+        kind: "file" as const,
+        id: file.id,
+        name: file.fileName,
+        uploadedBy: file.uploadedBy,
+        dateUploaded: file.dateUploaded,
+        lastUpdated: file.lastUpdated,
+        size: file.size,
+        sharedWith: sharedWithByItemId[file.id] ?? [],
+      };
+    }
+
+    return null;
+  }, [searchParams, folderById, fileById, allFolderDescendantsById, fileBytesById, filesState, foldersState]);
+
+  useEffect(() => {
+    const itemType = searchParams.get("itemType");
+    const itemId = searchParams.get("itemId");
+    if (!itemType && !itemId) return;
+
+    const isValidType = itemType === "file" || itemType === "folder";
+    if (!isValidType || !detailSelection) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("itemType");
+      next.delete("itemId");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, detailSelection, setSearchParams]);
 
   const toggleRowSelection = (rowId: string) => {
     setSelectedIds(prev => {
@@ -323,25 +454,128 @@ export default function DashboardFilesPage() {
     });
   };
 
-  const handleView = (row: UploadRow) => {
-    if (row.kind === "folder") {
-      navigate(`/dashboard/files/${row.id}`);
-    }
-    setOpenMenuRowId(null);
-  };
-
-  const handleAction = (action: "rename" | "delete", row: UploadRow) => {
-    console.log(`[files] ${action}`, row);
-    setOpenMenuRowId(null);
-  };
-
   const navigateToCrumb = (folderId: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("itemType");
+    next.delete("itemId");
+
     if (folderId === ROOT_FOLDER_ID) {
-      navigate("/dashboard/files");
+      navigate(`/dashboard/files${next.size ? `?${next.toString()}` : ""}`);
       return;
     }
 
-    navigate(`/dashboard/files/${folderId}`);
+    navigate(`/dashboard/files/${folderId}${next.size ? `?${next.toString()}` : ""}`);
+  };
+
+  const openDetails = (row: UploadRow) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("itemType", row.kind);
+    next.set("itemId", row.id);
+    setSearchParams(next);
+    setOpenMenu(null);
+  };
+
+  const openRow = (row: UploadRow) => {
+    if (row.kind === "folder") {
+      const next = new URLSearchParams(searchParams);
+      next.delete("itemType");
+      next.delete("itemId");
+      navigate(`/dashboard/files/${row.id}${next.size ? `?${next.toString()}` : ""}`);
+      setOpenMenu(null);
+      return;
+    }
+
+    openDetails(row);
+  };
+
+  const closeDetails = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("itemType");
+    next.delete("itemId");
+    setSearchParams(next);
+  };
+
+  const toggleRowMenu = (row: UploadRow, button: HTMLButtonElement) => {
+    setOpenMenu(previous => {
+      if (previous && previous.row.id === row.id) {
+        return null;
+      }
+
+      const menuWidth = 128;
+      const menuHeight = 76;
+      const spacing = 8;
+      const rect = button.getBoundingClientRect();
+      const openUpward = window.innerHeight - rect.bottom < menuHeight + spacing;
+      const x = Math.max(spacing, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - spacing));
+      const y = openUpward ? rect.top - menuHeight - spacing : rect.bottom + spacing;
+
+      return {
+        row,
+        x,
+        y: Math.max(spacing, y),
+      };
+    });
+  };
+
+  const handleDownload = () => {
+    if (!detailSelection || detailSelection.kind !== "file") return;
+    console.log(`[files] download`, detailSelection.id);
+  };
+
+  const deleteSelectedItems = () => {
+    const selected = new Set(selectedIds);
+    const selectedFolderIds = new Set(
+      [...selected].filter(id => {
+        const row = rows.find(candidate => candidate.id === id);
+        return row?.kind === "folder";
+      }),
+    );
+
+    const descendantFolderIds = new Set<string>();
+    const stack = [...selectedFolderIds];
+    while (stack.length > 0) {
+      const currentId = stack.pop();
+      if (!currentId) continue;
+      const childFolderIds = folderIdsByParent.get(currentId) ?? [];
+      for (const childId of childFolderIds) {
+        if (descendantFolderIds.has(childId) || selectedFolderIds.has(childId)) continue;
+        descendantFolderIds.add(childId);
+        stack.push(childId);
+      }
+    }
+
+    const allFolderIdsToDelete = new Set([...selectedFolderIds, ...descendantFolderIds]);
+
+    setFoldersState(previous =>
+      previous.filter(folder => {
+        if (selected.has(folder.id)) return false;
+        if (allFolderIdsToDelete.has(folder.id)) return false;
+        return true;
+      }),
+    );
+
+    setFilesState(previous =>
+      previous.filter(file => {
+        if (selected.has(file.id)) return false;
+        if (allFolderIdsToDelete.has(file.parentId)) return false;
+        return true;
+      }),
+    );
+
+    if (detailSelection) {
+      const detailRemoved = selected.has(detailSelection.id) || allFolderIdsToDelete.has(detailSelection.id);
+      if (detailRemoved) {
+        closeDetails();
+      }
+    }
+
+    if (allFolderIdsToDelete.has(currentFolderId)) {
+      navigate("/dashboard/files");
+    }
+
+    setSelectedIds(new Set());
+    setOpenMenu(null);
+    setDeleteConfirmOpen(false);
   };
 
   return (
@@ -379,109 +613,77 @@ export default function DashboardFilesPage() {
             })}
           </div>
 
-          <div className="w-full max-w-sm">
+          <div className="flex w-full max-w-sm items-center justify-end gap-2">
             <Input placeholder="Search" value={searchValue} onChange={event => setSearchValue(event.target.value)} />
+            {selectedIds.size > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="border-red-4 bg-red-4 text-ui-0 hover:border-red-3 hover:bg-red-3"
+              >
+                <TrashIcon className="size-4" />
+                Delete ({selectedIds.size})
+              </Button>
+            ) : null}
           </div>
         </div>
 
-        <div ref={menuContainerRef} className="overflow-x-auto rounded-[10px] border border-ui-6">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="bg-ui-8 text-ui-2">
-                <th className="w-12 px-4 py-3">
-                  <Checkbox
-                    checked={allVisibleSelected}
-                    onChange={toggleVisibleSelection}
-                    ariaLabel="Select all visible uploads"
-                    indeterminate={someVisibleSelected}
-                  />
-                </th>
-                <th className="px-4 py-3">File Name</th>
-                <th className="px-4 py-3">Date Uploaded</th>
-                <th className="px-4 py-3">Last Updated</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3">Upload by</th>
-                <th className="w-12 px-4 py-3 text-right"> </th>
-              </tr>
-            </thead>
-            <tbody className="bg-ui-7 text-ui-3">
-              {rows.map(row => (
-                <tr key={row.id} className="border-t border-ui-6">
-                  <td className="px-4 py-3">
-                    <Checkbox
-                      checked={selectedIds.has(row.id)}
-                      onChange={() => toggleRowSelection(row.id)}
-                      ariaLabel={`Select ${row.name}`}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    {row.kind === "folder" ? (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/dashboard/files/${row.id}`)}
-                        className="inline-flex items-center gap-2 text-ui-1 hover:text-ui-0"
-                      >
-                        <FolderClosedIcon className="size-4" />
-                        <span>{row.name}</span>
-                      </button>
-                    ) : (
-                      row.name
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{row.dateUploaded}</td>
-                  <td className="px-4 py-3">{row.lastUpdated}</td>
-                  <td className="px-4 py-3">{row.size}</td>
-                  <td className="px-4 py-3">{row.uploadedBy}</td>
-                  <td className="relative px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      aria-label={`Open actions for ${row.name}`}
-                      onClick={() => setOpenMenuRowId(prev => (prev === row.id ? null : row.id))}
-                      className="border border-ui-6 bg-ui-8 px-2 py-1 text-ui-2 hover:bg-ui-6"
-                    >
-                      ⋮
-                    </button>
-
-                    {openMenuRowId === row.id ? (
-                      <div className="absolute right-4 top-11 z-10 w-32 border border-ui-6 bg-ui-8 shadow-lg">
-                        <button
-                          type="button"
-                          onClick={() => handleView(row)}
-                          className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAction("rename", row)}
-                          className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
-                        >
-                          Rename
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAction("delete", row)}
-                          className="block w-full px-3 py-2 text-left text-xs text-red-3 hover:bg-ui-7"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="border-t border-ui-6 px-4 py-8 text-center text-ui-4">
-                    No folders or files found.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <FilesTable
+          rows={rows}
+          selectedIds={selectedIds}
+          allVisibleSelected={allVisibleSelected}
+          someVisibleSelected={someVisibleSelected}
+          onToggleVisibleSelection={toggleVisibleSelection}
+          onToggleRowSelection={toggleRowSelection}
+          onToggleRowMenu={toggleRowMenu}
+          onOpenFolder={folderId => navigate(`/dashboard/files/${folderId}`)}
+          onOpenRow={openRow}
+        />
       </section>
+
+      {openMenu ? (
+        <div className="fixed inset-0 z-40">
+          <button
+            type="button"
+            className="absolute inset-0 bg-transparent"
+            aria-label="Close actions menu"
+            onClick={() => setOpenMenu(null)}
+          />
+          <div
+            className="absolute z-50 w-32 border border-ui-6 bg-ui-8 shadow-lg"
+            style={{ left: `${openMenu.x}px`, top: `${openMenu.y}px` }}
+          >
+            <button
+              type="button"
+              onClick={() => openRow(openMenu.row)}
+              className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              onClick={() => openDetails(openMenu.row)}
+              className="block w-full px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
+            >
+              Details
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <ItemDetailsDrawer detailSelection={detailSelection} onClose={closeDetails} onDownload={handleDownload} />
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title="Delete selected items?"
+        description={`Delete ${selectedIds.size} selected item${selectedIds.size === 1 ? "" : "s"}? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedIds.size}`}
+        icon={<CautionIcon className="size-5" />}
+        onConfirm={deleteSelectedItems}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </div>
   );
 }

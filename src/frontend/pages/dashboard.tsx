@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import FilesTable from "@/frontend/components/files/files-table";
+import { CautionIcon, TrashIcon } from "@/frontend/components/icons/status-icons";
+import ItemDetailsDrawer from "@/frontend/components/files/item-details-drawer";
+import type { DetailSelection, UploadRow } from "@/frontend/components/files/types";
 import Pagination from "@/frontend/components/pagination";
 import Button from "@/frontend/components/ui/button";
-import Checkbox from "@/frontend/components/ui/checkbox";
+import ConfirmModal from "@/frontend/components/ui/confirm-modal";
 import Input from "@/frontend/components/ui/input";
 
 type FileRow = {
@@ -119,47 +123,78 @@ const recentFiles: FileRow[] = [
 ];
 
 export default function DashboardPage() {
+  const [dashboardFiles, setDashboardFiles] = useState<FileRow[]>(recentFiles);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [openMenuRowId, setOpenMenuRowId] = useState<string | null>(null);
-  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+  const [detailSelection, setDetailSelection] = useState<DetailSelection | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<{
+    row: UploadRow;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const rowsPerPage = 4;
-  const totalRows = recentFiles.length;
+  const totalRows = dashboardFiles.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
 
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * rowsPerPage;
-  const paginatedRows = recentFiles.slice(startIndex, startIndex + rowsPerPage);
+  const paginatedRows = dashboardFiles.slice(startIndex, startIndex + rowsPerPage);
 
-  const visibleRowIds = useMemo(() => paginatedRows.map(row => row.id), [paginatedRows]);
+  const tableRows = useMemo<UploadRow[]>(
+    () =>
+      paginatedRows.map(row => ({
+        id: row.id,
+        kind: "file",
+        name: row.fileName,
+        parentId: "root",
+        dateUploaded: row.dateUploaded,
+        lastUpdated: row.lastUpdated,
+        size: row.size,
+        uploadedBy: row.uploadedBy,
+      })),
+    [paginatedRows],
+  );
+
+  const visibleRowIds = useMemo(() => tableRows.map(row => row.id), [tableRows]);
   const selectedVisibleCount = visibleRowIds.filter(id => selectedIds.has(id)).length;
   const allVisibleSelected = visibleRowIds.length > 0 && selectedVisibleCount === visibleRowIds.length;
   const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
 
   useEffect(() => {
-    if (!openMenuRowId) return;
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuContainerRef.current) return;
-      if (menuContainerRef.current.contains(event.target as Node)) return;
-      setOpenMenuRowId(null);
-    };
+    if (!openMenu) return;
 
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpenMenuRowId(null);
+        setOpenMenu(null);
       }
     };
 
-    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onEscape);
 
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onEscape);
     };
-  }, [openMenuRowId]);
+  }, [openMenu]);
+
+  useEffect(() => {
+    setOpenMenu(null);
+  }, [safePage]);
+
+  useEffect(() => {
+    if (safePage === currentPage) return;
+    setCurrentPage(safePage);
+  }, [safePage, currentPage]);
+
+  useEffect(() => {
+    if (!detailSelection) return;
+
+    const exists = tableRows.some(row => row.id === detailSelection.id);
+    if (!exists) {
+      setDetailSelection(null);
+    }
+  }, [detailSelection, tableRows]);
 
   const toggleRowSelection = (rowId: string) => {
     setSelectedIds(prev => {
@@ -182,9 +217,64 @@ export default function DashboardPage() {
     });
   };
 
-  const handleAction = (action: "view" | "rename" | "delete", row: FileRow) => {
-    console.log(`[dashboard] ${action} file`, row);
-    setOpenMenuRowId(null);
+  const handleAction = (action: "view" | "rename" | "delete", row: UploadRow) => {
+    if (action === "view") {
+      setDetailSelection({
+        kind: "file",
+        id: row.id,
+        name: row.name,
+        uploadedBy: row.uploadedBy,
+        dateUploaded: row.dateUploaded,
+        lastUpdated: row.lastUpdated,
+        size: row.size,
+        sharedWith: [],
+      });
+    } else {
+      console.log(`[dashboard] ${action} file`, row);
+    }
+    setOpenMenu(null);
+  };
+
+  const closeDetails = () => {
+    setDetailSelection(null);
+  };
+
+  const deleteSelectedFiles = () => {
+    const idsToDelete = new Set(selectedIds);
+    setDashboardFiles(previous => previous.filter(file => !idsToDelete.has(file.id)));
+    if (detailSelection && idsToDelete.has(detailSelection.id)) {
+      setDetailSelection(null);
+    }
+    setSelectedIds(new Set());
+    setOpenMenu(null);
+    setDeleteConfirmOpen(false);
+  };
+
+  const handleDownload = () => {
+    if (!detailSelection || detailSelection.kind !== "file") return;
+    console.log(`[dashboard] download file`, detailSelection.id);
+  };
+
+  const toggleRowMenu = (row: UploadRow, button: HTMLButtonElement) => {
+    setOpenMenu(previous => {
+      if (previous && previous.row.id === row.id) {
+        return null;
+      }
+
+      const menuWidth = 128;
+      const menuHeight = 108;
+      const spacing = 8;
+      const rect = button.getBoundingClientRect();
+      const openUpward = window.innerHeight - rect.bottom < menuHeight + spacing;
+      const x = Math.max(spacing, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - spacing));
+      const y = openUpward ? rect.top - menuHeight - spacing : rect.bottom + spacing;
+
+      return {
+        row,
+        x,
+        y: Math.max(spacing, y),
+      };
+    });
   };
 
   return (
@@ -202,17 +292,34 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[2fr_1fr]">
-        <div className="grid gap-4 md:grid-cols-3">
-          {metricCards.map(card => (
-            <article key={card.title} className="panel-solid p-4">
-              <p className="text-ui-3 text-sm">{card.title}</p>
-              <p className="text-ui-0 mt-3 text-3xl font-semibold">{card.value}</p>
-              <p className="text-ui-4 mt-1 text-sm">{card.detail}</p>
-              <div className="mt-4 h-2 bg-ui-8">
-                <div className="h-2 bg-secondary" style={{ width: card.value }} />
-              </div>
-            </article>
-          ))}
+        <div>
+          <div className="overflow-x-auto md:hidden">
+            <div className="flex min-w-max gap-4 pb-1">
+              {metricCards.map(card => (
+                <article key={card.title} className="panel-solid min-w-[280px] p-4">
+                  <p className="text-ui-3 text-sm">{card.title}</p>
+                  <p className="text-ui-0 mt-3 text-3xl font-semibold">{card.value}</p>
+                  <p className="text-ui-4 mt-1 text-sm">{card.detail}</p>
+                  <div className="mt-4 h-2 bg-ui-8">
+                    <div className="h-2 bg-secondary" style={{ width: card.value }} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="hidden gap-4 md:grid md:grid-cols-3 h-full">
+            {metricCards.map(card => (
+              <article key={card.title} className="panel-solid p-4">
+                <p className="text-ui-3 text-sm">{card.title}</p>
+                <p className="text-ui-0 mt-3 text-3xl font-semibold">{card.value}</p>
+                <p className="text-ui-4 mt-1 text-sm">{card.detail}</p>
+                <div className="mt-4 h-2 bg-ui-8">
+                  <div className="h-2 bg-secondary" style={{ width: card.value }} />
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
 
         <article className="panel-solid p-4">
@@ -237,87 +344,34 @@ export default function DashboardPage() {
       <section className="mt-[40px]">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-ui-0 text-xl font-semibold">Uploaded Files</h2>
-          <div className="w-full max-w-sm">
+          <div className="flex w-full max-w-sm items-center justify-end gap-2">
             <Input placeholder="Search" />
+            {selectedIds.size > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="border-red-4 bg-red-4 text-ui-0 hover:border-red-3 hover:bg-red-3"
+              >
+                <TrashIcon className="size-4" />
+                Delete ({selectedIds.size})
+              </Button>
+            ) : null}
           </div>
         </div>
 
-        <div ref={menuContainerRef} className="overflow-x-auto rounded-[10px] border border-ui-6">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="bg-ui-8 text-ui-2">
-                <th className="w-12 px-4 py-3">
-                  <Checkbox
-                    checked={allVisibleSelected}
-                    onChange={toggleVisibleSelection}
-                    ariaLabel="Select all visible files"
-                    indeterminate={someVisibleSelected}
-                  />
-                </th>
-                <th className="px-4 py-3">File Name</th>
-                <th className="px-4 py-3">Date Uploaded</th>
-                <th className="px-4 py-3">Last Updated</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3">Upload by</th>
-                <th className="w-12 px-4 py-3 text-right"> </th>
-              </tr>
-            </thead>
-            <tbody className="bg-ui-7 text-ui-3">
-              {paginatedRows.map(row => (
-                <tr key={row.id} className="border-t border-ui-6">
-                  <td className="px-4 py-3">
-                    <Checkbox
-                      checked={selectedIds.has(row.id)}
-                      onChange={() => toggleRowSelection(row.id)}
-                      ariaLabel={`Select ${row.fileName}`}
-                    />
-                  </td>
-                  <td className="px-4 py-3">{row.fileName}</td>
-                  <td className="px-4 py-3">{row.dateUploaded}</td>
-                  <td className="px-4 py-3">{row.lastUpdated}</td>
-                  <td className="px-4 py-3">{row.size}</td>
-                  <td className="px-4 py-3">{row.uploadedBy}</td>
-                  <td className="relative px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      aria-label={`Open actions for ${row.fileName}`}
-                      onClick={() => setOpenMenuRowId(prev => (prev === row.id ? null : row.id))}
-                      className="border border-ui-6 bg-ui-8 px-2 py-1 text-ui-2 hover:bg-ui-6"
-                    >
-                      ⋮
-                    </button>
-
-                    {openMenuRowId === row.id ? (
-                      <div className="absolute right-4 top-11 z-10 w-32 border border-ui-6 bg-ui-8 shadow-lg">
-                        <button
-                          type="button"
-                          onClick={() => handleAction("view", row)}
-                          className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAction("rename", row)}
-                          className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
-                        >
-                          Rename
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleAction("delete", row)}
-                          className="block w-full px-3 py-2 text-left text-xs text-red-3 hover:bg-ui-7"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <FilesTable
+          rows={tableRows}
+          selectedIds={selectedIds}
+          allVisibleSelected={allVisibleSelected}
+          someVisibleSelected={someVisibleSelected}
+          onToggleVisibleSelection={toggleVisibleSelection}
+          onToggleRowSelection={toggleRowSelection}
+          onToggleRowMenu={toggleRowMenu}
+          onOpenFolder={() => undefined}
+          onOpenRow={row => handleAction("view", row)}
+        />
 
         <Pagination
           currentPage={safePage}
@@ -328,6 +382,55 @@ export default function DashboardPage() {
           onPageChange={setCurrentPage}
         />
       </section>
+
+      {openMenu ? (
+        <div className="fixed inset-0 z-40">
+          <button
+            type="button"
+            className="absolute inset-0 bg-transparent"
+            aria-label="Close actions menu"
+            onClick={() => setOpenMenu(null)}
+          />
+          <div
+            className="absolute z-50 w-32 border border-ui-6 bg-ui-8 shadow-lg"
+            style={{ left: `${openMenu.x}px`, top: `${openMenu.y}px` }}
+          >
+            <button
+              type="button"
+              onClick={() => handleAction("view", openMenu.row)}
+              className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
+            >
+              View
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAction("rename", openMenu.row)}
+              className="block w-full border-b border-ui-6 px-3 py-2 text-left text-xs text-ui-1 hover:bg-ui-7"
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAction("delete", openMenu.row)}
+              className="block w-full px-3 py-2 text-left text-xs text-red-3 hover:bg-ui-7"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <ItemDetailsDrawer detailSelection={detailSelection} onClose={closeDetails} onDownload={handleDownload} />
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title="Delete selected files?"
+        description={`Delete ${selectedIds.size} selected file${selectedIds.size === 1 ? "" : "s"}? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedIds.size}`}
+        icon={<CautionIcon className="size-5" />}
+        onConfirm={deleteSelectedFiles}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </div>
   );
 }
